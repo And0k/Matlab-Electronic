@@ -22,13 +22,12 @@ save_dir = [dir_parent '/data_out'];
 if ~exist(save_dir, "dir")
     mkdir(save_dir);
 end
-
+% Unzip all zip files in same folder (dir_data), delete zip
 file_names = dir([dir_data '/*.zip']);
 if ~isempty(file_names)
     fprintf(1, "Extracting files from %d zip archive(s)", length(file_names))
     for file_name_struct = file_names'
         file_name = file_name_struct.name;
-        i = i + 1;
         unzip([dir_data '/' file_name], dir_data);
         delete([dir_data '/' file_name]);
     end
@@ -65,7 +64,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     persistent fs_prev filter_bank  % filter bank to calculate high resolution spectrum depends on fs
     persistent ha_octave ha_psd     % handles of axes to reuse
     pref = 0.00002;     % 20 micro Pascals reference sound pressure level (0 dB SPL= 0.00002 Pa)
-    SPL_units_label = ', dB re 20 uPa';  SPL_units_label_utf8 = ', dB re 20 Pa';
+    SPL_units_label = ', dB re 20 uPa';  SPL_units_label_utf8 = ', dB re 20 μPa';
     x_units_plot = 'kHz';
     x_units_plot_coef = 1E-3;
 
@@ -98,7 +97,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
         if isempty(ha_octave) || ~ishandle(ha_octave)
             hf = figure('Name', ['1/3-octave power spectrum of ' data_title]);
             grid on;  % also creates axes on figure
-            ha_octave = get(hf,'CurrentAxes'); 
+            ha_octave = get(hf, 'CurrentAxes');
             set(ha_octave.YLabel, 'String', ['Sound Pressure Level' SPL_units_label_utf8]);
             xlabel(ha_octave, ['Frequency, ' x_units_plot]);
         else
@@ -164,7 +163,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             xlim(lim_x * x_units_plot_coef);  % kHz
             % ylim(lim_y);
             title(['High resolution spectrum. ' filename], 'Parent', ha_psd);
-            
+
             hold(ha_psd, 'on');
             legend(ha_psd, 'Box','off', 'Color','none')
             legend(ha_psd, 'show')
@@ -174,7 +173,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             axesHandlesToChildObjects = findobj(ha_psd, 'Type', 'line');
             if ~isempty(axesHandlesToChildObjects)
                 delete(axesHandlesToChildObjects);
-            end  
+            end
             set(hf, 'Name', ['High resolution spectrum of ' data_title]);
         end
         semilogx(ha_psd, ...
@@ -182,7 +181,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             'DisplayName', 'uniform intervals', ...
             'Color', 'k' ...
             );
-        
+
         % ax = hl.Parent;
         plot(ha_psd, freq_oct * x_units_plot_coef, psd_oct, '-', ...
             'DisplayName', '1/3 octave intervals', ...
@@ -270,22 +269,22 @@ function filterBankSA = get_spectrum_analyzer(fs)
     filterBankRBW = fs/n_freq_bins;
     try
     filterBankSA = spectrumAnalyzer( ...
-    SampleRate=fs, ...
-    RBWSource='property', ...  % means using RBW value:
-    RBW=filterBankRBW, ...     % Resolution bandwidth, Hz. (frequency span/RBW > 2)
-    ... % 'AveragingMethod','exponential', ...
-    ... % 'ForgettingFactor',0.001, ...
-    PlotAsTwoSidedSpectrum=false, ...
-    FrequencyScale='log', ...
-    SpectrumType= 'rms', ... % 'power',  ... %
-    SpectrumUnits= 'Vrms', ... % 'Watts', ... %
-    ... %YLabel='Power', ...
-    Title=sprintf('Filter bank (of size %d) Power Spectrum Estimate', n_freq_bins), ...
-    FrequencySpan='start-and-stop-frequencies', ...
-    StartFrequency=lim_x(1), ...
-    StopFrequency=fs/2, ...
-    ... % YLimits=lim_y, ...  % 'YLimits',[-150 50],
-    Position=[50 375 800 450] ...
+        SampleRate=fs, ...
+        RBWSource='property', ...  % means using RBW value:
+        RBW=filterBankRBW, ...     % Resolution bandwidth, Hz. (frequency span/RBW > 2)
+        ... % 'AveragingMethod','exponential', ...
+        ... % 'ForgettingFactor',0.001, ...
+        PlotAsTwoSidedSpectrum=false, ...
+        FrequencyScale='log', ...
+        SpectrumType= 'rms', ... % 'power',  ... %
+        SpectrumUnits= 'Vrms', ... % 'Watts', ... %
+        ... %YLabel='Power', ...
+        Title=sprintf('Filter bank (of size %d) Power Spectrum Estimate', n_freq_bins), ...
+        FrequencySpan='start-and-stop-frequencies', ...
+        StartFrequency=lim_x(1), ...
+        StopFrequency=fs/2, ...
+        ... % YLimits=lim_y, ...  % 'YLimits',[-150 50],
+        Position=[50 375 800 450] ...
     );
     catch
         fprintf(1, 'Error use DSP System Toolbox function. Skip calc. of High resolution spectrum')
@@ -296,7 +295,7 @@ end
 function poctave_localplot_10log(ha, P, CF)
     global lim_y
     % Draw 10*log10(P).
-    % ha: axes to draw
+    % ha: axes to draw on
     %
     % See ~ same code part in MATLAB poctave(). Added ha here.
     newplot;
