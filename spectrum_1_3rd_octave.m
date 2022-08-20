@@ -25,7 +25,7 @@ end
 % Unzip all zip files in same folder (dir_data), delete zip
 file_names = dir([dir_data '/*.zip']);
 if ~isempty(file_names)
-    fprintf(1, "Extracting files from %d zip archive(s)", length(file_names))
+    fprintf(1, "Extracting files from %d zip archive(s).\n", length(file_names))
     for file_name_struct = file_names'
         file_name = file_name_struct.name;
         unzip([dir_data '/' file_name], dir_data);
@@ -66,7 +66,8 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     persistent fs_prev filter_bank  % filter bank to calculate high resolution spectrum depends on fs
     persistent ha_octave ha_psd     % handles of axes to reuse
     pref = 0.00002;     % 20 micro Pascals reference sound pressure level (0 dB SPL= 0.00002 Pa)
-    SPL_units_label = ', dB re 20 uPa';  SPL_units_label_utf8 = ', dB re 20 μPa';
+    SPL_units_label = ', dB re 20 uPa';
+    SPL_units_label_utf8 = ', dB re 20 μPa';
     x_units_plot = 'kHz';
     x_units_plot_coef = 1E-3;
 
@@ -98,16 +99,17 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
 
     if data_title
         if isempty(ha_octave) || ~ishandle(ha_octave)
-            hf = figure('Name', ['1/3-octave power spectrum of ' data_title]);
-            grid on;  % also creates axes on figure
+            hf = figure('Name', ['1/3-octave power spectrum of ' data_title]);      
+            grid on  % also creates axes on figure
             ha_octave = get(hf, 'CurrentAxes');
-            set(ha_octave.YLabel, 'String', ['Sound Pressure Level' SPL_units_label_utf8]);
-            xlabel(ha_octave, ['Frequency, ' x_units_plot]);
+            set(ha_octave, 'NextPlot','replacechildren');
+            ylabel(ha_octave, ['Sound Pressure Level' SPL_units_label_utf8]);
+            % x label will be added by poctave...plot
         else
             hf = ha_octave.Parent;
             set(hf, 'Name', ['1/3-octave power spectrum of ' data_title]);
         end
-        poctave_localplot_10lg(ha_octave, Power / pref.^2, freq_oct)
+        poctave_localplot_10lg(ha_octave, Power / pref.^2, freq_oct);
         % poctave(ar / pref, fs, 'BandsPerOctave', 3, 'FrequencyLimits',[max(3, lim_x(1)), lim_x(2)]);
         title(['1/3-octave spectrum. ' filename], 'Parent', ha_octave);
         if b_save
@@ -116,15 +118,17 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
         end
     end
     if b_save
-        % Save spectrum text file
+        % Save to text file
 
         % Convert to calibrated SPL values (referenced to 20 uPa)
         % see also https://www.mathworks.com/matlabcentral/answers/431461-poctave-return-value-for-acoustics-analysis
         SPL = 10 * log10(Power / pref.^2);
         writetable( ...
             table( ...
-                freq_oct, bands_oct, psd_oct, SPL, ...
-                VariableNames = {'freq, Hz', 'band, Hz', 'PSD, Pa^2/Hz', ['SPL' SPL_units_label]} ...
+                freq_oct, bands_oct, psd_oct, SPL, VariableNames = { ...
+                    'freq, Hz', 'band, Hz', 'PSD, Pa^2/Hz', ...
+                    ['SPL' SPL_units_label] ...
+                    } ...
                 ), ...
             [path_name_psd '.csv'] ...
             )
@@ -160,24 +164,18 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     if data_title
         if isempty(ha_psd) || ~ishandle(ha_psd)
             hf = figure('Name', ['High resolution spectrum of ' data_title]);
-            grid on  % also creates axes on figure
-            ha_psd = get(hf,'CurrentAxes');
-            set(ha_psd, 'YScale', 'log')
-            xlabel(ha_psd, ['Frequency, ' x_units_plot]); ylabel('Power Spectrum Density, Pa^2/Hz');
+            ha_psd = newplot();
+            set(ha_psd, 'NextPlot','replacechildren', ...
+                'YScale', 'log');
+            xlabel(ha_psd, ['Frequency, ' x_units_plot]);
+            ylabel(ha_psd, 'Power Spectrum Density, Pa^2/Hz');
             xlim(lim_x * x_units_plot_coef);  % kHz
             % ylim(lim_y);
-            title(['High resolution spectrum. ' filename], 'Parent', ha_psd);
-
-            hold(ha_psd, 'on');
+            grid(ha_psd, 'on');
             legend(ha_psd, 'Box','off', 'Color','none')
             legend(ha_psd, 'show')
         else
             hf = ha_psd.Parent;
-            % clf(hf)
-            axesHandlesToChildObjects = findobj(ha_psd, 'Type', 'line');
-            if ~isempty(axesHandlesToChildObjects)
-                delete(axesHandlesToChildObjects);
-            end
             set(hf, 'Name', ['High resolution spectrum of ' data_title]);
         end
         semilogx(ha_psd, ...
@@ -185,17 +183,17 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             'DisplayName', 'uniform intervals', ...
             'Color', 'k' ...
             );
-
-        % ax = hl.Parent;
+        hold(ha_psd, 'on');
         plot(ha_psd, freq_oct * x_units_plot_coef, psd_oct, '-', ...
             'DisplayName', '1/3 octave intervals', ...
             'Color', 'r' ...
             );
-
+        set(ha_psd, 'NextPlot','replacechildren');
+        title(['High resolution spectrum. ' filename], 'Parent', ha_psd);
         if b_save
             path_name_psd = [save_dir '/spectr_hr_' filename(1 : end-4)];
             print(hf, '-djpeg', [path_name_psd, '.jpg'], '-noui');
-            % Save spectrum text file
+            % Save to text file
             writetable( ...
                 table( ...
                     tbl_data.FrequencyVector{1}, psd, SPL, ...
@@ -301,7 +299,7 @@ function poctave_localplot_10lg(ha, P, CF)
     % ha: axes to draw on
     %
     % See ~ same code part in MATLAB poctave(). Added ha here.
-    newplot;
+
     PdB = 10*log10(P);
     % Determine engineering units
     [~, scaleFactor, unitsStr] = signal.internal.utilities.getFrequencyEngUnits(CF(end));
@@ -317,5 +315,5 @@ function poctave_localplot_10lg(ha, P, CF)
         % If GUI is a bar plot, then xTicks should be a categorical array.
         xticks(ha, centerFreqLabels(1:spc:end))
     end
-    xlabel(ha, [getString(message('signal:poctave:Frequency')) '(' unitsStr ')'])
+    xlabel(ha, [getString(message('signal:poctave:Frequency')) ', ' unitsStr])
 end
