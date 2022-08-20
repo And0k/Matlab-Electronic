@@ -55,11 +55,13 @@ for file_name_struct = file_names'
     get_spectrum(ar, fs, file_name, data_title, b_save);
 end
 
-%% Calculate spectrum
+%% Functions
 
 function get_spectrum(ar, fs, filename, data_title, b_save)
+    % Calculate spectrum
+    %
     % data_title: figure title end. If no then do not create figure, required if want save image
-    % b_save: save figure image
+    % b_save: save result: figure image and csv
     global save_dir lim_x lim_y     %#ok<GVMIS>
     persistent fs_prev filter_bank  % filter bank to calculate high resolution spectrum depends on fs
     persistent ha_octave ha_psd     % handles of axes to reuse
@@ -87,6 +89,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     % Octave spectrum
     %%%%%%%%%%%%%%%%%
     BandsPerOctave = 3;
+    % Average power over (sub)octave bands and center frequencies
     [Power, freq_oct] = poctave(ar, fs, 'BandsPerOctave', BandsPerOctave);
     % PSD
     freq_edges = [freq_oct.*2^(-1/(2*BandsPerOctave)); freq_oct(end)*2^(1/(2*BandsPerOctave))];
@@ -104,7 +107,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             hf = ha_octave.Parent;
             set(hf, 'Name', ['1/3-octave power spectrum of ' data_title]);
         end
-        poctave_localplot_10log(ha_octave, Power / pref.^2, freq_oct)
+        poctave_localplot_10lg(ha_octave, Power / pref.^2, freq_oct)
         % poctave(ar / pref, fs, 'BandsPerOctave', 3, 'FrequencyLimits',[max(3, lim_x(1)), lim_x(2)]);
         title(['1/3-octave spectrum. ' filename], 'Parent', ha_octave);
         if b_save
@@ -114,7 +117,8 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     end
     if b_save
         % Save spectrum text file
-        % convert filtered data to calibrated SPL values referenced to 20 uPa
+
+        % Convert to calibrated SPL values (referenced to 20 uPa)
         % see also https://www.mathworks.com/matlabcentral/answers/431461-poctave-return-value-for-acoustics-analysis
         SPL = 10 * log10(Power / pref.^2);
         writetable( ...
@@ -235,16 +239,15 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     end
 end
 %%
-%
 
 function [ar, fs, tim] = read_data(filename, coef)
-    % Gets input array and its frequncy in Hz from text file
+    % Gets input array, its frequncy in Hz and recording time from text file
     %
     % filename: string, full path
     % coef: ar multiplier coefficient
     % Returns:
     % ar: 1D double, vector
-    % fs: Input Rate In Hz
+    % fs: input rate, Hz
     % tim: datetime, time of data recording
     nl = '\r\n';
     fileID = fopen(filename, 'r', 'native', 'ASCII');
@@ -292,7 +295,7 @@ function filterBankSA = get_spectrum_analyzer(fs)
     end
 end
 
-function poctave_localplot_10log(ha, P, CF)
+function poctave_localplot_10lg(ha, P, CF)
     global lim_y
     % Draw 10*log10(P).
     % ha: axes to draw on
