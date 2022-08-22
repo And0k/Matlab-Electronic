@@ -298,13 +298,16 @@ function poctave_localplot_10lg(ha, P, CF)
     % Draw 10*log10(P).
     % ha: axes to draw on
     %
-    % See ~ same code part in MATLAB poctave(). Added ha here.
+    % Changes comparative to ~ same code of MATLAB poctave(): 
+    % - units: Hz only,
+    % - added ha
 
     PdB = 10*log10(P);
     % Determine engineering units
-    [~, scaleFactor, unitsStr] = signal.internal.utilities.getFrequencyEngUnits(CF(end));
+    % Changed: 0 instead of CF(end) to get Hz
+    [~, scaleFactor, unitsStr] = signal.internal.utilities.getFrequencyEngUnits(0);
     % Plotting
-    centerFreqLabels = categorical(scaleFactor.*CF);
+    centerFreqLabels = categorical(scaleFactor.*to_standard_freq(CF));
     pObject = bar(ha, centerFreqLabels, PdB);
     pObject(1).BaseValue = lim_y(1);
     ylim(ha, lim_y);
@@ -316,4 +319,13 @@ function poctave_localplot_10lg(ha, P, CF)
         xticks(ha, centerFreqLabels(1:spc:end))
     end
     xlabel(ha, [getString(message('signal:poctave:Frequency')) ', ' unitsStr])
+end
+
+function standard_freq = to_standard_freq(freqs)
+    % convert exact 1/3 octave frequences to nearest that of ГОСТ 12090-80
+    round2half = round(freqs*2, 2, 'significant')/2;
+    round2 = round(freqs, 2, 'significant');
+    round2_better = (abs(freqs - round2) - abs(freqs - round2half))./freqs < -0.002;
+    standard_freq = round2half;
+    standard_freq(round2_better) = round2(round2_better);
 end
