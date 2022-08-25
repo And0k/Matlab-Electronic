@@ -247,11 +247,39 @@ function [ar, fs, tim] = read_data(filename, coef)
     % ar: 1D double, vector
     % fs: input rate, Hz
     % tim: datetime, time of data recording
+    %
+    % %%% File format %%%
+    % Oscilloscope Data File
+    % Experiment Time :   25-08-2022 21:25:32
+    % Number of frames: 1639889
+    % 
+    % Module: E-502 (3T439094)
+    % 
+    % Number Of Channels : 1
+    % Input Rate In kHz: 100.000000
+    % Input Time In Sec: 16.398890
+    % Decimation: 1
+    % Data Format: Volts
+    % Segments: 1
+    % Data as Time Sequence:
+    %     Ch  1  
+    %  Канал 1   
+    % 
+    %      0.016
+    %      0.012
+    %      ...
+
     nl = '\r\n';
     fileID = fopen(filename, 'r', 'native', 'ASCII');
-        textscan(fileID, '%*s', 1, 'Delimiter', nl);          % skip 1 line
-        tim = textscan(fileID, '%*[^:]: %{dd-MM-yyyy hh:mm:ss}D', 1, ...
-          'Delimiter', nl); tim = tim{1};  % time
+        fgetl(fileID);  % skip 1 line
+        tim_str = fgetl(fileID);
+        try
+            str_arr = split(tim_str, ': ');
+            tim_str = strtrim(str_arr{2});
+            tim = datetime(tim_str, 'InputFormat', 'dd-MM-yyyy hh:mm:ss');
+        catch
+            tim = tim_str;
+        end        
         headers = textscan(fileID, '%s %s', 9, 'Delimiter', [':' nl]);
         textscan(fileID, '%*s', 4, 'Delimiter', nl);
         ar = textscan(fileID, '%f', 'Delimiter', nl);
