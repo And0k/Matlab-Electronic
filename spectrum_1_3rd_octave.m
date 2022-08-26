@@ -6,7 +6,7 @@ global save_dir lim_x lim_y
 dir_data = 'D:\WorkData\_experiment\underwater_noise\_raw';
 
 % Spectrum calculation limits and figure dimensions
-lim_x = [3 NaN];  % [min, max] Hz, if lim_x[2] is NaN, then it will be fs/2 after fs defined in read_data()
+lim_x = [3 10005];  % [min, max] Hz, if max > 10000 then still 10000 will be used
 lim_y = [50 110]; % dB ref: 20 uPa
 
 % Amplification coefficients applied to sound signal
@@ -64,17 +64,19 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     %
     % data_title: figure title end. If no then do not create figure, required if want save image
     % b_save: save result: figure image and csv
-    global save_dir lim_x lim_y     %#ok<GVMIS>
+    global save_dir lim_x lim_y     % lim_x maximum is set here to be <= 10000 Hz
     persistent fs_prev filter_bank  % filter bank to calculate high resolution spectrum depends on fs
     persistent ha_octave ha_psd     % handles of axes to reuse
     pref = 0.00002;     % 20 micro Pascals reference sound pressure level (0 dB SPL= 0.00002 Pa)
     SPL_units_label = ', dB re 20 uPa';
     SPL_units_label_utf8 = ', dB re 20 μPa';
+
+    % units of PSD (not octave spectrum wich we hardcoded to be Hz)
     x_units_plot = 'kHz';
     x_units_plot_coef = 1E-3;
 
-    if isnan(lim_x(end))
-        lim_x(end) = fs/2;  % Hz
+    if isnan(lim_x(end)) || lim_x(end) > 10000
+        lim_x(end) = 10000;  % Hz
     end
 
     % Spectrogram
@@ -93,7 +95,9 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     %%%%%%%%%%%%%%%%%
     BandsPerOctave = 3;
     % Average power over (sub)octave bands and center frequencies
-    [Power, freq_oct] = poctave(ar, fs, 'BandsPerOctave', BandsPerOctave);
+    [Power, freq_oct] = poctave(ar, fs, ...
+        'BandsPerOctave', BandsPerOctave, ...
+        'FrequencyLimits', lim_x);
     % PSD
     freq_edges = [freq_oct.*2^(-1/(2*BandsPerOctave)); freq_oct(end)*2^(1/(2*BandsPerOctave))];
     bands_oct = diff(freq_edges);
@@ -119,9 +123,9 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             print(hf, '-djpeg', [path_name_psd, '.jpg'], '-noui');
         end
     end
+    
+    % Save to text file
     if b_save
-        % Save to text file
-
         % Convert to calibrated SPL values (referenced to 20 uPa)
         % see also https://www.mathworks.com/matlabcentral/answers/431461-poctave-return-value-for-acoustics-analysis
         SPL = 10 * log10(Power / pref.^2);
