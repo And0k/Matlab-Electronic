@@ -9,14 +9,16 @@ dir_data = 'D:\WorkData\_experiment\underwater_noise\_raw';
 lim_x = [3 NaN];  % [min, max] Hz, if lim_x[2] is NaN, then it will be fs/2 after fs defined in read_data()
 lim_y = [50 110]; % dB ref: 20 uPa
 
-% Coefficient to convert recorded array units to Pa
-coef_hydrophone = 0.53;                           % pC/Pa
-coef_preamplifier = 100E-3;                       % V/pC (100 mV/pC)
-coef_to_Pa = 1 / (coef_hydrophone * coef_preamplifier);  % Pa
+% Amplification coefficients applied to sound signal
+coef_hydrophone = 0.53;           % pC/Pa
+coef_preamplifier = 100;          % mV/pC (use 1, 10 or 100)
+
+%% Start
+% Coefficient to convert recorded voltage (V) to sound pressure (Pa)
+coef_V_to_Pa = 1 / (coef_hydrophone * coef_preamplifier * 1E-3);  % Pa
 
 b_save = true;  % if false then no files will be saved
 
-%% Start
 [dir_parent, ~, ~] = fileparts(dir_data);
 save_dir = [dir_parent '/data_out'];
 if ~exist(save_dir, "dir")
@@ -41,7 +43,7 @@ for file_name_struct = file_names'
     file_name = file_name_struct.name;
     i = i + 1;
     fprintf(1, '\n%d. ', i)
-    [ar, fs, t_start] = read_data([dir_data '/' file_name], coef_to_Pa);
+    [ar, fs, t_start] = read_data([dir_data '/' file_name], coef_V_to_Pa);
     data_title = sprintf('%s (%d samples recorded %s)', file_name, length(ar), t_start);
     fprintf(1, data_title)
 
