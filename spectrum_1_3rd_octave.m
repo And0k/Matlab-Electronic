@@ -1,21 +1,21 @@
 %% Spectrum of sound pressure level (SPL) from Oscilloscope Data Files
-%% Copyright © 2022 Andrey Korzh. <ao.korzh@gmail.com>
+%% Copyright © 2022 Andrey Korzh <ao.korzh@gmail.com>
 global save_dir lim_x lim_y
 
-%% User configurantion
+%% User configuration
 dir_data = 'D:\WorkData\_experiment\underwater_noise\_raw';
 
 % Spectrum calculation limits and figure dimensions
-lim_x = [3 10005];  % [min, max] Hz, if max > 10000 then still 10000 will be used
-lim_y = [50 110]; % dB ref: 20 uPa
+lim_x = [3 10000];  % [min, max] Hz, if max > 10000 then still 10000 will be used
+lim_y = [50 110];  % dB ref: 20 uPa
 
-% Amplification coefficients applied to sound signal
+% Amplification coefficients applied to a sound signal
 coef_hydrophone = 0.53;           % pC/Pa
 coef_preamplifier = 100;          % mV/pC (use 1, 10 or 100)
 
 %% Start
-% Coefficient to convert recorded voltage (V) to sound pressure (Pa)
-coef_V_to_Pa = 1 / (coef_hydrophone * coef_preamplifier * 1E-3);  % Pa
+% Coefficient to convert recorded voltage to a sound pressure in Pa
+coef_V_to_Pa = 1 / (coef_hydrophone * coef_preamplifier * 1E-3);  % Pa/V
 
 b_save = true;  % if false then no files will be saved
 
@@ -24,6 +24,7 @@ save_dir = [dir_parent '/data_out'];
 if ~exist(save_dir, "dir")
     mkdir(save_dir);
 end
+
 % Unzip all zip files in same folder (dir_data), delete zip
 file_names = dir([dir_data '/*.zip']);
 if ~isempty(file_names)
@@ -48,7 +49,7 @@ for file_name_struct = file_names'
     fprintf(1, data_title)
 
     if false  % set true to display raw data
-        figure('Name', ['Raw data ' data_title])
+        figure('Name', ['Raw data ' data_title]) %#ok<UNRCH> 
         plot(ar, '-', 'DisplayName', 'raw');
         % legend(ax, 'Box','off', 'Color','none')
         % legend('show')
@@ -61,17 +62,17 @@ end
 
 function get_spectrum(ar, fs, filename, data_title, b_save)
     % Calculate spectrum
-    %
+    % fs: sampling frequency
     % data_title: figure title end. If no then do not create figure, required if want save image
     % b_save: save result: figure image and csv
     global save_dir lim_x lim_y     % lim_x maximum is set here to be <= 10000 Hz
     persistent fs_prev filter_bank  % filter bank to calculate high resolution spectrum depends on fs
     persistent ha_octave ha_psd     % handles of axes to reuse
-    pref = 0.00002;     % 20 micro Pascals reference sound pressure level (0 dB SPL= 0.00002 Pa)
+    pref = 0.00002;     % 20 micro Pascals reference sound pressure level (0 dB SPL = 0.00002 Pa)
     SPL_units_label = ', dB re 20 uPa';
     SPL_units_label_utf8 = ', dB re 20 μPa';
 
-    % units of PSD (not octave spectrum wich we hardcoded to be Hz)
+    % units of PSD (not for octave spectrum which we hard-coded to be Hz in poctave_localplot_10lg())
     x_units_plot = 'kHz';
     x_units_plot_coef = 1E-3;
 
@@ -82,7 +83,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     % Spectrogram
     %%%%%%%%%%%%%
     if false  % data_title
-        figure('Name', ['Spectrogram spectrum of ' data_title])
+        figure('Name', ['Spectrogram spectrum of ' data_title]) %#ok<UNRCH> 
         poctave(ar / pref, fs, 'spectrogram', 'OverlapPercent', 50)
         title([get(gca, 'title').String '. Input: ' filename])
         if b_save
@@ -110,7 +111,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
             ha_octave = get(hf, 'CurrentAxes');
             set(ha_octave, 'NextPlot','replacechildren');
             ylabel(ha_octave, ['Sound Pressure Level' SPL_units_label_utf8]);
-            % x label will be added by poctave...plot
+            % x label will be added by poctave_localplot_10lg()
         else
             hf = ha_octave.Parent;
             set(hf, 'Name', ['1/3-octave power spectrum of ' data_title]);
@@ -145,8 +146,8 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     if isempty(fs_prev) || fs ~= fs_prev
         fs_prev = fs;
         filter_bank = get_spectrum_analyzer(fs);
-        if isempty(filter_bank)  % failed
-            fs_prev = NaN;       % can not use previous filter_bank
+        if isempty(filter_bank)  % if failed
+            fs_prev = NaN;       % can not use previous filter_bank later
             return
         end
     end
@@ -216,7 +217,6 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     figure;
     subplot(1, 2, 1);
     imagesc(time, fois, aslt(xSignal, fs, fois, 3, srord, 0));
-    %set(gca, 'ydir', 'normal');
     colormap jet;
 
     %subplot(1, 1, 1);
@@ -242,7 +242,6 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     ylabel('|F(k)|');
     end
 end
-%%
 
 function [ar, fs, tim] = read_data(filename, coef)
     % Gets input array, its frequncy in Hz and recording time from text file
@@ -297,30 +296,30 @@ function [ar, fs, tim] = read_data(filename, coef)
 end
 
 function filterBankSA = get_spectrum_analyzer(fs)
-    global lim_x lim_y
-    % filter-bank
-
-    n_freq_bins = 1024*16;  % (for example 32000 is max for zetlab)
+    % Filter-bank
+    
+	global lim_x lim_y
+    n_freq_bins = 1024*16;  % (for example 32000 is max for ZetLab)
     filterBankRBW = fs/n_freq_bins;
     try
-    filterBankSA = spectrumAnalyzer( ...
-        SampleRate=fs, ...
-        RBWSource='property', ...  % means using RBW value:
-        RBW=filterBankRBW, ...     % Resolution bandwidth, Hz. (frequency span/RBW > 2)
-        ... % 'AveragingMethod','exponential', ...
-        ... % 'ForgettingFactor',0.001, ...
-        PlotAsTwoSidedSpectrum=false, ...
-        FrequencyScale='log', ...
-        SpectrumType= 'rms', ... % 'power',  ... %
-        SpectrumUnits= 'Vrms', ... % 'Watts', ... %
-        ... %YLabel='Power', ...
-        Title=sprintf('Filter bank (of size %d) Power Spectrum Estimate', n_freq_bins), ...
-        FrequencySpan='start-and-stop-frequencies', ...
-        StartFrequency=lim_x(1), ...
-        StopFrequency=fs/2, ...
-        ... % YLimits=lim_y, ...  % 'YLimits',[-150 50],
-        Position=[50 375 800 450] ...
-    );
+        filterBankSA = spectrumAnalyzer( ...
+            'SampleRate', fs, ...
+            'RBWSource', 'property', ...  % means using RBW value:
+            'RBW', filterBankRBW, ...     % Resolution bandwidth, Hz. (frequency span/RBW > 2)
+            ... % 'AveragingMethod','exponential', ...
+            ... % 'ForgettingFactor',0.001, ...
+            'PlotAsTwoSidedSpectrum', false, ...
+            'FrequencyScale', 'log', ...
+            'SpectrumType', 'rms', ...  % 'power',  ... %
+            'SpectrumUnits', 'Vrms', ...  % 'Watts', ... %
+            ...  % YLabel='Power', ...
+            'Title', sprintf('Filter bank (of size %d) Power Spectrum Estimate', n_freq_bins), ...
+            'FrequencySpan', 'start-and-stop-frequencies', ...
+            'StartFrequency', lim_x(1), ...
+            'StopFrequency', fs/2, ...
+            ...  % YLimits=lim_y, ...  % 'YLimits',[-150 50],
+            'Position', [50 375 800 450] ...
+        );
     catch
         fprintf(1, 'Error use DSP System Toolbox function. Skip calc. of High resolution spectrum')
         filterBankSA = [];
@@ -328,14 +327,14 @@ function filterBankSA = get_spectrum_analyzer(fs)
 end
 
 function poctave_localplot_10lg(ha, P, CF)
-    global lim_y
     % Draw 10*log10(P).
     % ha: axes to draw on
     %
     % Changes comparative to ~ same code of MATLAB poctave(): 
-    % - units: Hz only,
+    % - units: Hz only, standard frequencies
     % - added ha
 
+    global lim_y
     PdB = 10*log10(P);
     % Determine engineering units
     % Changed: 0 instead of CF(end) to get Hz
@@ -348,7 +347,7 @@ function poctave_localplot_10lg(ha, P, CF)
     % Resolve the number of x-ticks to maxNumTicks.
     maxNumTicks = 10;
     if numel(CF)>maxNumTicks
-        spc = ceil(numel(CF)/maxNumTicks);
+        spc = ceil(numel(CF) / maxNumTicks);
         % If GUI is a bar plot, then xTicks should be a categorical array.
         xticks(ha, centerFreqLabels(1:spc:end))
     end
@@ -356,7 +355,7 @@ function poctave_localplot_10lg(ha, P, CF)
 end
 
 function standard_freq = to_standard_freq(freqs)
-    % convert exact 1/3 octave frequences to nearest that of ГОСТ 12090-80
+    % Convert exact 1/3 octave frequencies to nearest that of ГОСТ 12090-80
     round2half = round(freqs*2, 2, 'significant')/2;
     round2 = round(freqs, 2, 'significant');
     round2_better = (abs(freqs - round2) - abs(freqs - round2half))./freqs < -0.002;
