@@ -5,7 +5,7 @@ global save_dir lim_x lim_y
 %% User configuration
 dir_data = 'D:\WorkData\_experiment\underwater_noise\_raw';
 
-% Spectrum calculation limits and figure dimensions
+% Spectrum calculation and drawing limits
 lim_x = [3 10000];  % [min, max] Hz, if max > 10000 then still 10000 will be used
 lim_y = [50 110];  % dB ref: 20 uPa
 
@@ -38,7 +38,7 @@ end
 
 % Process all found *.txt files
 file_names = dir([dir_data '/*.txt']);
-fprintf(1, "Processing %d found files", length(file_names))
+fprintf(1, "Processing %d found file(s)", length(file_names))
 i = 0;
 for file_name_struct = file_names'
     file_name = file_name_struct.name;
@@ -57,6 +57,7 @@ for file_name_struct = file_names'
 
     get_spectrum(ar, fs, file_name, data_title, b_save);
 end
+fprintf(1, "Ok");
 
 %% Functions
 
@@ -64,7 +65,7 @@ function get_spectrum(ar, fs, filename, data_title, b_save)
     % Calculate spectrum
     % fs: sampling frequency
     % data_title: figure title end. If no then do not create figure, required if want save image
-    % b_save: save result: figure image and csv
+    % b_save: whether to save result (figure image and csv)
     global save_dir lim_x lim_y     % lim_x maximum is set here to be <= 10000 Hz
     persistent fs_prev filter_bank  % filter bank to calculate high resolution spectrum depends on fs
     persistent ha_octave ha_psd     % handles of axes to reuse
@@ -320,8 +321,12 @@ function filterBankSA = get_spectrum_analyzer(fs)
             ...  % YLimits=lim_y, ...  % 'YLimits',[-150 50],
             'Position', [50 375 800 450] ...
         );
-    catch
-        fprintf(1, 'Error use DSP System Toolbox function. Skip calc. of High resolution spectrum')
+    catch ME1  % Use of DSP System Toolbox function error. This file in stack:
+        i_this = find(strcmp({ME1.stack.file}, ME1.stack(end).file), 1, 'first');
+        fprintf(2, ...
+            [' Skipped high resolution spectrum calculation because of ' ...
+            '<a href="matlab:opentoline(''%s'',%d)">error</a>: "%s"\n'], ...
+            ME1.stack(i_this).file, ME1.stack(i_this).line(1),  ME1.message);
         filterBankSA = [];
     end
 end
